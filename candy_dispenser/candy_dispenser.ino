@@ -1,0 +1,375 @@
+/*
+  お菓子ディスペンサー（ESP32-C3 SuperMini）
+  ------------------------------------------------------------
+  使い方
+    1. 登録済みのICカードをRC522にかざす
+       → 「ピピッ」のあと、今日あと何回使えるかを短い音の数で知らせる
+    2. リモコンの数字キーで粒数を入れて OK（数字なしで OK ならDEFAULT_PIECES粒）
+       ← キー：1文字消す / * キー：キャンセル
+    3. 円盤が回って1粒ずつ落ち、終わったらメロディが鳴る
+       障害物センサーで落ちた粒を数え、足りなければ追加で回す。
+       何回回しても落ちてこなければ「空か詰まり」としてエラー音で止まる
+       （1粒も出なかったときは、その回は使用回数に数えない）
+
+  カードの登録と削除（リモコン）
+    #  → カードをかざす：登録（青LEDが点滅しているあいだ受付）
+    *  → カードをかざす：削除（その日の使用回数も消える）
+  詰まったとき
+    待機中に ← キー：円盤を少し戻して前に送る（お菓子は出ない）
+
+  配線（ESP32-C3 SuperMini）
+    RC522    3.3V→3V3  GND→GND  SCK→GPIO4  MISO→GPIO5  MOSI→GPIO6
+             SDA(SS)→GPIO7  RST→GPIO10   ※RC522は必ず3.3V
+    赤外線受信 HX1838B  VCC→3V3  GND→GND  DO→GPIO2
+             ※5Vではなく3.3Vにつなぐ（出力がそのままGPIOに入るため）
+    パッシブブザー  S→150Ω→GPIO3  −→GND
+             ※基板にトランジスタが付いている型なら抵抗なしでVCCを3V3へ
+    ULN2003  IN1→GPIO0  IN2→GPIO1  IN3→GPIO20  IN4→GPIO21
+             ＋→5V  −→GND（28BYJ-48の白コネクタはそのまま差す）
+    電解コンデンサ  470µF：ULN2003の＋と−のあいだ（＋側を5Vへ）
+                   10µF ：RC522の3.3VとGNDのあいだ（＋側を3.3Vへ）
+    障害物検知モジュール  ＋→3V3  GND→GND  OUT→GPIO9  EN→ジャンパーのまま
+             ※反応距離は半固定抵抗で3cm程度に。何もないときOUTがHIGHになること
+               （GPIO9は起動時にLOWだと書き込みモードになるため、筒が空の状態で電源を入れる）
+    スリットのLED（RGB/3色LEDモジュール）  −→GND  光らせる色→220Ω→5V（ESP32のピンは使わない）
+
+  ライブラリ（Arduino IDEのライブラリマネージャで入れる）
+    MFRC522（GithubCommunity / miguelbalboa版）、IRremote（Armin Joachimsmeyer、4.x）
+  ボード設定：ESP32C3 Dev Module、USB CDC On Boot = Enabled
+*/
+
+#define DECODE_NEC  // 付属リモコンはNEC方式なのでNECだけ有効にする
+#include <IRremote.hpp>
+#include <WiFi.h>
+#include <SPI.h>
+#include <MFRC522.h>
+#include <Preferences.h>
+#include <time.h>
+
+// ===================== 設定 =====================
+const char* WIFI_SSID = "YOUR_SSID";      // 日付（1日の回数制限）を取るためだけに使う
+const char* WIFI_PASS = "YOUR_PASSWORD";
+
+const int DAILY_LIMIT    = 3;    // カード1枚が1日に使える回数
+const int DEFAULT_PIECES = 5;    // 数字を入れずにOKを押したときの粒数
+const int MAX_PIECES     = 20;   // 1回に出せる最大の粒数
+const int POCKETS        = 6;    // 円盤の穴の数
+const bool REVERSE_DIR   = false;           // 回る向きが逆ならtrue
+const unsigned int STEP_DELAY_US = 1200;    // 小さいほど速い（速すぎると脱調する）
+const unsigned long INPUT_TIMEOUT_MS = 10000; // 操作がないとキャンセルするまでの時間
+
+const bool USE_DROP_SENSOR   = true;  // 障害物センサーで数えるか（falseなら回した数で決める）
+const int  MAX_EMPTY_IN_ROW  = 4;     // 続けて何回落ちてこなければ「空か詰まり」とするか
+const int  MAX_EXTRA_TURNS   = 8;     // 取り逃がし分として追加で回す上限
+const unsigned long DROP_WAIT_MS   = 350; // 1穴分回したあと、落ちてくるのを待つ時間
+const unsigned long DROP_DEBOUNCE_MS = 40; // 1粒を2回数えないための間隔
+
+// ===================== ピン =====================
+const int PIN_SCK = 4, PIN_MISO = 5, PIN_MOSI = 6, PIN_SS = 7, PIN_RST = 10;
+const int PIN_IR     = 2;
+const int PIN_BUZZER = 3;
+const int PIN_LED    = 8;                    // 基板上の青LED（LOWで点灯）
+const int PIN_DROP   = 9;                    // 障害物センサーOUT（検知でLOW）
+const int STEPPER_PIN[4] = {0, 1, 20, 21};   // ULN2003 IN1〜IN4
+
+const double STEPS_PER_REV = 4075.7728;      // 28BYJ-48のハーフステップ1回転分
+
+MFRC522 rfid(PIN_SS, PIN_RST);
+
+volatile unsigned int dropCount = 0;
+volatile unsigned long lastDropMs = 0;
+void IRAM_ATTR onDrop() {
+  unsigned long now = millis();
+  if (now - lastDropMs >= DROP_DEBOUNCE_MS) { dropCount++; lastDropMs = now; }
+}
+Preferences prefs;
+
+enum Mode { IDLE, WAIT_NUMBER, REGISTER, REMOVE };
+Mode mode = IDLE;
+unsigned long modeSince = 0;
+String cardKey;   // 受け付け中のカード
+String digits;    // 入力中の数字
+
+// ===================== ステッピングモーター =====================
+const uint8_t SEQ[8][4] = {
+  {1,0,0,0},{1,1,0,0},{0,1,0,0},{0,1,1,0},
+  {0,0,1,0},{0,0,1,1},{0,0,0,1},{1,0,0,1}
+};
+int seqIndex = 0;
+long curPos = 0;        // 実際に進んだステップ数
+double targetPos = 0;   // 小数を含む目標位置（穴の間隔の端数が積み重ならないように）
+
+void stepOnce(int dir) {
+  int d = REVERSE_DIR ? -dir : dir;
+  seqIndex = (seqIndex + d + 8) % 8;
+  for (int i = 0; i < 4; i++) digitalWrite(STEPPER_PIN[i], SEQ[seqIndex][i]);
+  curPos += dir;
+  delayMicroseconds(STEP_DELAY_US);
+}
+
+void coilsOff() {  // 止まっているあいだは電流を止めて発熱を防ぐ
+  for (int i = 0; i < 4; i++) digitalWrite(STEPPER_PIN[i], LOW);
+}
+
+void rotatePockets(double pockets) {
+  targetPos += pockets * STEPS_PER_REV / POCKETS;
+  long t = lround(targetPos);
+  while (curPos < t) stepOnce(+1);
+  while (curPos > t) stepOnce(-1);
+}
+
+// ===================== ブザー =====================
+void beep(int freq, int ms) {
+  tone(PIN_BUZZER, freq);
+  delay(ms);
+  noTone(PIN_BUZZER);
+  delay(40);
+}
+void sndKey()        { beep(2000, 40); }
+void sndAccept()     { beep(1500, 80); beep(2000, 80); }
+void sndError()      { beep(300, 200); beep(300, 200); }
+void sndLimit()      { beep(300, 150); beep(300, 150); beep(300, 150); }
+void sndCancel()     { beep(800, 150); }
+void sndRegistered() { beep(2000, 80); beep(2500, 80); beep(3000, 150); }
+void sndRemoved()    { beep(3000, 80); beep(2500, 80); beep(2000, 150); }
+void sndReady()      { beep(2000, 60); beep(3000, 60); }
+void sndDone()       { beep(1568, 100); beep(2093, 100); beep(2637, 100); beep(3136, 250); }
+void sndCount(int n) { for (int i = 0; i < n; i++) { beep(2500, 60); delay(120); } }
+
+// ===================== 日付と使用回数 =====================
+uint32_t today() {  // 例：20261107。時刻が取れていなければ0
+  struct tm t;
+  if (!getLocalTime(&t, 0)) return 0;
+  if (t.tm_year + 1900 < 2024) return 0;
+  return (t.tm_year + 1900) * 10000UL + (t.tm_mon + 1) * 100UL + t.tm_mday;
+}
+
+// 保存形式：日付×100＋その日の回数
+int usedToday(const String& key) {
+  prefs.begin("usage", true);
+  uint32_t v = prefs.getUInt(key.c_str(), 0);
+  prefs.end();
+  if (v / 100 != today()) return 0;
+  return v % 100;
+}
+
+void addUse(const String& key) {
+  uint32_t d = today();
+  int u = usedToday(key) + 1;
+  prefs.begin("usage", false);
+  prefs.putUInt(key.c_str(), d * 100 + u);
+  prefs.end();
+}
+
+bool isRegistered(const String& key) {
+  prefs.begin("cards", true);
+  bool r = prefs.getBool(key.c_str(), false);
+  prefs.end();
+  return r;
+}
+
+String uidKey() {  // 保存用のキー（NVSのキーは15文字までなので最大7バイト）
+  String s;
+  int n = min((int)rfid.uid.size, 7);
+  for (int i = 0; i < n; i++) {
+    char b[3];
+    sprintf(b, "%02X", rfid.uid.uidByte[i]);
+    s += b;
+  }
+  return s;
+}
+
+// ===================== リモコン =====================
+// 付属の17キーリモコン（NEC）でよく使われるコード。
+// 違うキーが反応するときは、シリアルモニタに出る「未登録のキー」の値に書き換える
+char keyFromCommand(uint8_t c) {
+  switch (c) {
+    case 0x45: return '1'; case 0x46: return '2'; case 0x47: return '3';
+    case 0x44: return '4'; case 0x40: return '5'; case 0x43: return '6';
+    case 0x07: return '7'; case 0x15: return '8'; case 0x09: return '9';
+    case 0x16: return '*'; case 0x19: return '0'; case 0x0D: return '#';
+    case 0x18: return 'U'; case 0x52: return 'D';
+    case 0x08: return 'L'; case 0x5A: return 'R';
+    case 0x1C: return 'K';  // OK
+  }
+  return 0;
+}
+
+char readRemote() {
+  if (!IrReceiver.decode()) return 0;
+  char k = 0;
+  IRData& d = IrReceiver.decodedIRData;
+  if (d.protocol == NEC && !(d.flags & IRDATA_FLAGS_IS_REPEAT)) {
+    k = keyFromCommand(d.command);
+    if (!k) Serial.printf("未登録のキー: 0x%02X\n", d.command);
+  }
+  IrReceiver.resume();
+  return k;
+}
+
+// ===================== 動作 =====================
+void setMode(Mode m) {
+  mode = m;
+  modeSince = millis();
+  if (m == IDLE) { digits = ""; cardKey = ""; }
+}
+
+void dispense(int n) {
+  Serial.printf("%d粒出します\n", n);
+  digitalWrite(PIN_LED, LOW);
+
+  if (!USE_DROP_SENSOR) {               // センサーなし：回した数で決める
+    for (int i = 0; i < n; i++) { rotatePockets(1); delay(120); }
+    coilsOff();
+    addUse(cardKey);
+    sndDone();
+    setMode(IDLE);
+    return;
+  }
+
+  // センサーあり：落ちた粒を数え、足りなければ追加で回す
+  noInterrupts(); dropCount = 0; interrupts();
+  int turns = 0, emptyInRow = 0;
+  unsigned int got = 0;
+  while (got < (unsigned)n && turns < n + MAX_EXTRA_TURNS) {
+    unsigned int before = got;
+    rotatePockets(1);
+    turns++;
+    unsigned long t0 = millis();
+    while (millis() - t0 < DROP_WAIT_MS) { got = dropCount; if (got > before) break; delay(5); }
+    delay(60);                          // 跳ね返りを数え終える
+    got = dropCount;
+    if (got > before) emptyInRow = 0;
+    else if (++emptyInRow >= MAX_EMPTY_IN_ROW) break;
+  }
+  coilsOff();
+  Serial.printf("落ちた粒: %u / %d（%d回転）\n", got, n, turns);
+
+  if (got > 0) addUse(cardKey);         // 1粒も出なければ使用回数に数えない
+  if (got >= (unsigned)n) sndDone();
+  else { sndError(); sndCount((int)min(got, 10u)); }  // 足りなかった：エラー音＋出た粒数（最大10回）
+  setMode(IDLE);
+}
+
+void handleCard(const String& key) {
+  Serial.printf("カード: %s\n", key.c_str());
+
+  if (mode == REGISTER) {
+    prefs.begin("cards", false); prefs.putBool(key.c_str(), true); prefs.end();
+    sndRegistered(); setMode(IDLE); return;
+  }
+  if (mode == REMOVE) {
+    prefs.begin("cards", false); prefs.remove(key.c_str()); prefs.end();
+    prefs.begin("usage", false); prefs.remove(key.c_str()); prefs.end();
+    sndRemoved(); setMode(IDLE); return;
+  }
+
+  if (!isRegistered(key)) { sndError(); return; }
+
+  int left = DAILY_LIMIT - usedToday(key);
+  if (left <= 0) { sndLimit(); setMode(IDLE); return; }
+
+  setMode(WAIT_NUMBER);
+  cardKey = key;
+  sndAccept();
+  delay(150);
+  sndCount(left);   // 今日あと何回使えるか
+  modeSince = millis();
+}
+
+void handleKey(char k) {
+  modeSince = millis();
+  bool isDigit = (k >= '0' && k <= '9');
+
+  switch (mode) {
+    case IDLE:
+      if (k == '#')      { setMode(REGISTER); sndKey(); }
+      else if (k == '*') { setMode(REMOVE);   sndKey(); }
+      else if (k == 'L') {                    // 詰まり解消（差し引きゼロなのでお菓子は出ない）
+        sndKey();
+        rotatePockets(-0.3);
+        rotatePockets(+0.3);
+        coilsOff();
+      }
+      else if (isDigit)  { beep(600, 100); }  // 先にカードをかざしてもらう合図
+      break;
+
+    case WAIT_NUMBER:
+      if (isDigit) {
+        if (digits.length() >= 2) { sndError(); }
+        else { digits += k; sndKey(); }
+      } else if (k == 'L') {                  // 1文字消す
+        if (digits.length()) digits.remove(digits.length() - 1);
+        sndKey();
+      } else if (k == '*') {
+        sndCancel(); setMode(IDLE);
+      } else if (k == 'K') {
+        int n = digits.length() ? digits.toInt() : DEFAULT_PIECES;
+        if (n < 1 || n > MAX_PIECES) { sndError(); digits = ""; }
+        else dispense(n);
+      }
+      break;
+
+    case REGISTER:
+    case REMOVE:
+      sndCancel(); setMode(IDLE);             // どのキーでもキャンセル
+      break;
+  }
+}
+
+void updateLed() {
+  bool on = false;
+  if (mode == WAIT_NUMBER) on = true;
+  else if (mode == REGISTER || mode == REMOVE) on = (millis() / 200) % 2;
+  digitalWrite(PIN_LED, on ? LOW : HIGH);
+}
+
+// ===================== setup / loop =====================
+void setup() {
+  Serial.begin(115200);
+
+  for (int i = 0; i < 4; i++) { pinMode(STEPPER_PIN[i], OUTPUT); digitalWrite(STEPPER_PIN[i], LOW); }
+  pinMode(PIN_LED, OUTPUT);
+  digitalWrite(PIN_LED, HIGH);
+
+  SPI.begin(PIN_SCK, PIN_MISO, PIN_MOSI, PIN_SS);
+  rfid.PCD_Init();
+  IrReceiver.begin(PIN_IR, DISABLE_LED_FEEDBACK);
+  pinMode(PIN_DROP, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(PIN_DROP), onDrop, FALLING);
+
+  // 保存領域を最初に作っておく
+  prefs.begin("cards", false); prefs.end();
+  prefs.begin("usage", false); prefs.end();
+
+  // Wi-Fiは日付を取るためだけ。つながらなくても動く（その間は回数がリセットされない）
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  WiFi.setTxPower(WIFI_POWER_8_5dBm);  // SuperMiniはこれでつながりやすくなる個体が多い
+  configTzTime("JST-9", "ntp.nict.jp", "pool.ntp.org");
+
+  unsigned long t0 = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - t0 < 15000) delay(200);
+  Serial.println(WiFi.status() == WL_CONNECTED ? "Wi-Fi接続OK" : "Wi-Fiにつながりません（後で自動再接続）");
+
+  sndReady();
+}
+
+void loop() {
+  char k = readRemote();
+  if (k) handleKey(k);
+
+  if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
+    String key = uidKey();
+    rfid.PICC_HaltA();       // かざしっぱなしで連続反応しないように
+    rfid.PCD_StopCrypto1();
+    handleCard(key);
+  }
+
+  if (mode != IDLE && millis() - modeSince > INPUT_TIMEOUT_MS) {
+    sndCancel();
+    setMode(IDLE);
+  }
+
+  updateLed();
+}
