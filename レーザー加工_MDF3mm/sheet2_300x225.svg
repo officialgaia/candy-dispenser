@@ -405,7 +405,8 @@
 <path d="M261.16,38.91 L257.70,36.91 L254.24,38.91 L254.24,42.91 L257.70,44.91 L261.16,42.91 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
 <path d="M270.66,38.91 L267.20,36.91 L263.74,38.91 L263.74,42.91 L267.20,44.91 L270.66,42.91 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
 <path d="M280.16,38.91 L276.70,36.91 L273.24,38.91 L273.24,42.91 L276.70,44.91 L280.16,42.91 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
-<path d="M5.00,140.00 L127.00,140.00 L95.00,217.37 L61.00,217.37 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
-<path d="M130.00,220.00 L149.00,220.00 L149.00,140.00 L130.00,140.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
-<path d="M152.00,219.31 L284.00,219.31 L284.00,208.00 L152.00,208.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M5.00,140.00 L131.00,140.00 L97.00,217.69 L63.00,217.69 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M134.00,220.00 L153.00,220.00 L153.00,140.00 L134.00,140.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M156.00,219.31 L288.00,219.31 L288.00,208.00 L156.00,208.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M156.00,196.00 L161.00,196.00 L161.00,140.00 L156.00,140.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
 </svg>

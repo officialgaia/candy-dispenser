@@ -63,12 +63,12 @@ write("09_shelf",shelf,[Point(0,-40).buffer(14,64),box(-22,-21,22,9)]+[Point(x,-
 arm=Polygon([(-53,40),(53,40),(53,139),(40,149),(-40,149),(-53,139)])
 ring=crect(-38,90,38,146,9).difference(crect(-38,90,38,146,9).buffer(-1.4,join_style=2))
 write("10_armor",arm,[crect(-32,96,32,140,6),irs]+[sl.intersection(arm.buffer(-1.5)) for sl in slits if sl.intersects(arm.buffer(-1.5))],[ring],note="正面アーマー板（中央＝カード枠）")
-write("11_tank_fb",box(0,0,104,18),qty=2,note="内箱 前後")
-write("12_tank_lr",box(0,0,116,18),qty=2,note="内箱 左右")
-fF=math.hypot(56,69); fB=math.hypot(32,69); fS=math.hypot(35,69)   # じょうご：下の口34×34（z81）→上105×122（z150）
-write("13_funnel_front",Polygon([(-52,fF),(52,fF),(17,0),(-17,0)]),note="じょうご 前")
-write("14_funnel_back",Polygon([(-52,fB),(52,fB),(17,0),(-17,0)]),note="じょうご 後ろ")
-write("15_funnel_side",Polygon([(-61,fS),(61,fS),(29,0),(-5,0)]),qty=2,note="じょうご 左右")
+write("11_tank_fb",box(0,0,111.4,18),qty=2,note="内箱 前後（外壁の内側いっぱい・外壁に接着）")
+write("12_tank_lr",box(0,0,126,18),qty=2,note="内箱 左右（前後板の間に入る・外壁に接着）")
+fF=math.hypot(58,69); fB=math.hypot(34,69); fS=math.hypot(35.7,69)   # じょうご：下の口34×34（z81）→上105.4×126（z150＝内箱の内側）
+write("13_funnel_front",Polygon([(-52.7,fF),(52.7,fF),(17,0),(-17,0)]),note="じょうご 前（上端を内箱に接着）")
+write("14_funnel_back",Polygon([(-52.7,fB),(52.7,fB),(17,0),(-17,0)]),note="じょうご 後ろ")
+write("15_funnel_side",Polygon([(-63,fS),(63,fS),(29,0),(-5,0)]),qty=2,note="じょうご 左右")
 write("16_drawer_bottom",box(0,0,80,56),note="引き出し 底")
 write("17_drawer_long",box(0,0,80,19),qty=2,note="引き出し 前後の壁")
 write("18_drawer_short",box(0,0,50,19),qty=2,note="引き出し 左右の壁")

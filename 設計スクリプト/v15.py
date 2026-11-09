@@ -94,8 +94,9 @@ def plate4(a,b,c,d,t=3):
     return M.batch_hull([q(a),q(b),q(c),q(d)])
 zb,zt=SH+WT+AH,150
 FY=-PR*-1+SY  # 投入口のワールドy（回転後）
-fpan=M.compose([plate4((-52,-61,zt),(52,-61,zt),(SQ,FY-SQ,zb),(-SQ,FY-SQ,zb)),plate4((-52,61,zt),(52,61,zt),(SQ,FY+SQ,zb),(-SQ,FY+SQ,zb)),
-                plate4((-52,-61,zt),(-52,61,zt),(-SQ,FY+SQ,zb),(-SQ,FY-SQ,zb)),plate4((52,-61,zt),(52,61,zt),(SQ,FY+SQ,zb),(SQ,FY-SQ,zb))])
+TX,TY=52.7,63   # 内箱の内側の半幅（内箱は外壁の内側いっぱい：外側±55.7×±66、板厚3）
+fpan=M.compose([plate4((-TX,-TY,zt),(TX,-TY,zt),(SQ,FY-SQ,zb),(-SQ,FY-SQ,zb)),plate4((-TX,TY,zt),(TX,TY,zt),(SQ,FY+SQ,zb),(-SQ,FY+SQ,zb)),
+                plate4((-TX,-TY,zt),(-TX,TY,zt),(-SQ,FY+SQ,zb),(-SQ,FY-SQ,zb)),plate4((TX,-TY,zt),(TX,TY,zt),(SQ,FY+SQ,zb),(SQ,FY-SQ,zb))])
 
 tz0,tz1=29,SH-3
 EY=-PR+SY  # 出口のワールドy
@@ -109,7 +110,7 @@ sens=box(19,51,EY-6,EY+6,32,34)+box(17,21,EY-4,EY+4,34,38)
 Rz=lambda m:m.rotate((0,0,180))
 PT={"mdf":M.compose(mdf),"engrave":None,"armor":armor,"lid":box(-37,37,-DI-3,DI+3,TOP,TOP+3)-box(-28,28,-40,40,TOP-1,TOP+4),"hatch":box(-31,31,-43,43,TOP+3,TOP+6)-box(-14,14,-5,5,TOP+2,TOP+7),
  "led":box(-55,55,-64.5,-63,30,60),
- "base":Rz(b).translate((0,SY,SH)),"disc":Rz(d).translate((0,SY,SH+1.5)),"adapter":Rz(ad).translate((0,SY,SH+WT)),"mdf_funnel":fpan,"mdf_tank":box(-52,52,-61,61,zt,168)-box(-49,49,-58,58,zt-1,169),"mdf_drawer":drawer,"drawer_face":dface,"rails":rails,
+ "base":Rz(b).translate((0,SY,SH)),"disc":Rz(d).translate((0,SY,SH+1.5)),"adapter":Rz(ad).translate((0,SY,SH+WT)),"mdf_funnel":fpan,"mdf_tank":box(-55.7,55.7,-66,66,zt,168)-box(-52.7,52.7,-63,63,zt-1,169),"mdf_drawer":drawer,"drawer_face":dface,"rails":rails,
  "motor":cyl(14,19,0,8+SY,SH-19)+box(-21,21,4+SY,12+SY,SH-1,SH),"rc522":box(-30,30,-64,-62.4,98,138),"ir_rx":box(-6,6,-64,-59,76,86),
  "esp32":box(18,40,44,66,3,7),"uln2003":box(-17,17,58,66,52,84),"buzzer":box(-40,-26,50,66,3,9),"sensor_tube":tube,"sensor":sens}
 col={"sensor_tube":["#6fbf8f",1],"sensor":["#2e7d32",1],"mdf":["#1b1b22",.5],"engrave":["#c9a27a",1],"armor":["#2a2a36",1],"lid":["#1b1b22",1],"hatch":["#ff2bd6",1],"led":["#00e5ff",1],"base":["#8fa3b8",1],"disc":["#e8a33d",1],"adapter":["#6fbf8f",1],"mdf_funnel":["#2a2a36",1],"mdf_tank":["#2a2a36",1],"mdf_drawer":["#2a2a36",1],"drawer_face":["#2a2a36",1],"rails":["#1b1b22",1],"motor":["#c0c0c8",1],"rc522":["#1976d2",1],"ir_rx":["#555",1],"esp32":["#1565c0",1],"uln2003":["#2e7d32",1],"buzzer":["#444",1]}
