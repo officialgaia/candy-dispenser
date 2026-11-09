@@ -10,7 +10,7 @@
 | `candy_dispenser/` | ESP32-C3用のコード（Arduino IDEでこのフォルダを開く） |
 | `3Dプリント/` | disc.stl（円盤）、base.stl（底板）、adapter.stl（変換口）、sensor_tube.stl（センサー用の筒） |
 | `レーザー加工_MDF3mm/` | MDF 3mmのSVG（300×225 mmの板4枚分） |
-| `3Dモデル.html` | 完成形の3Dモデル（ブラウザで開く。ドラッグで回転） |
+| `3Dモデル.html` | 部品ごとに色分けした3Dモデル（ブラウザで開く）。分解スライダー、部品の説明・寸法、外装を隠す、1部品だけ表示ができる |
 | `組み立て済みモデル/` | 全体の3Dデータ assembly.3mf（Fusionやスライサーで開ける） |
 | `配線図.png` | 配線図（わかりやすい版） |
 | `電子回路/` | 回路図.pdf、配線表.csv（どのピンどうしをつなぐかの一覧） |
@@ -93,7 +93,8 @@ RC522は前板の裏に貼ります。基板の裏側（じょうご側）の空
 
 `pip install manifold3d trimesh shapely` のあと、`設計スクリプト` フォルダで次の順に実行します。
 
-1. `python3 v15.py` → disc.stl、base.stl、adapter.stl、sensor_tube.stl、組み立て済みモデル（3Dモデル.htmlの中身は `npm i three esbuild` のうえで v15.js をバンドル）
+1. `python3 v15.py` → disc.stl、base.stl、adapter.stl、sensor_tube.stl、組み立て済みモデル
+   3Dモデル.htmlは `python3 parts_viewer.py`（部品データ parts_data.js を作る）→ `npm i three esbuild` → `npx esbuild viewer_parts.js --bundle --minify --format=iife` の結果をHTMLの `<script>` に入れる
    回転部の寸法は v15.py の「回転部の寸法」の数値（穴の数・穴径・円盤の厚さなど）で変えられます。
 2. `python3 pack.py` → レーザー加工用SVG（300×225mmの板4枚に割り付け）
 
