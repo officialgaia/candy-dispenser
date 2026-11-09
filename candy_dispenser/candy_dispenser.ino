@@ -1,28 +1,29 @@
 /*
   お菓子ディスペンサー（ESP32-C3 SuperMini）
   ------------------------------------------------------------
-  使い方
-    1. 登録済みのICカードをRC522にかざす
-       → 「ピピッ」のあと、今日あと何回使えるかを短い音の数で知らせる
-    2. リモコンの数字キーで杯数を入れて OK（数字なしで OK ならDEFAULT_PORTIONS杯）
+  使い方（操作はICカードだけ）
+    1. 登録済みのカードをRC522にかざす
+       → 「ピピッ」のあと、今日あと何回使えるかを短い音の数で知らせる。この時点で1杯
+    2. 増やしたいときは、同じカードを一度離してまたかざす。かざすたびに1杯増える（最大MAX_PORTIONS杯）
+       最後にかざしてからTAP_WAIT_MS（2.5秒）たつと出し始める
        1杯＝円盤の穴1つ分（M&Mで約5粒。4〜6粒のばらつきあり）
-       ← キー：1文字消す / * キー：キャンセル
     3. 円盤が1/4回転するごとに1杯分落ち、終わったらメロディが鳴る
        障害物センサーで1杯ごとに落ちたかを確かめ、空振りした分は追加で回す。
        何回回しても落ちてこなければ「空か詰まり」としてエラー音で止まる
        （1杯も出なかったときは、その回は使用回数に数えない）
 
-  カードの登録と削除（リモコン）
-    #  → カードをかざす：登録（青LEDが点滅しているあいだ受付）
-    *  → カードをかざす：削除（その日の使用回数も消える）
-  詰まったとき
-    待機中に ← キー：円盤を少し戻して前に送る（お菓子は出ない）
+  管理カード（カードの登録・削除・詰まり解消用）
+    ・カードが1枚も登録されていない状態で最初にかざしたカードが管理カードになる
+      （管理カードではお菓子は出ない）
+    ・管理カードをかざす → 青LEDが点滅（INPUT_TIMEOUT_MS＝10秒受付）
+        → 未登録のカードをかざす：登録 / 登録済みのカードをかざす：削除
+        → もう一度管理カードをかざす：詰まり解消（円盤を少し戻して前に送る。お菓子は出ない）
+    ・管理カードをなくしたら、RESET_ADMIN を true にして書き込み → 次にかざしたカードが新しい管理カード
+      （そのあと false に戻して書き込み直す）
 
   配線（ESP32-C3 SuperMini）
     RC522    3.3V→3V3  GND→GND  SCK→GPIO4  MISO→GPIO5  MOSI→GPIO6
              SDA(SS)→GPIO7  RST→GPIO10   ※RC522は必ず3.3V
-    赤外線受信 HX1838B  VCC→3V3  GND→GND  DO→GPIO2
-             ※5Vではなく3.3Vにつなぐ（出力がそのままGPIOに入るため）
     パッシブブザー  S→150Ω→GPIO3  −→GND
              ※基板にトランジスタが付いている型なら抵抗なしでVCCを3V3へ
     ULN2003  IN1→GPIO0  IN2→GPIO1  IN3→GPIO20  IN4→GPIO21
@@ -35,12 +36,10 @@
     スリットのLED（RGB/3色LEDモジュール）  −→GND  光らせる色→220Ω→5V（ESP32のピンは使わない）
 
   ライブラリ（Arduino IDEのライブラリマネージャで入れる）
-    MFRC522（GithubCommunity / miguelbalboa版）、IRremote（Armin Joachimsmeyer、4.x）
+    MFRC522（GithubCommunity / miguelbalboa版）
   ボード設定：ESP32C3 Dev Module、USB CDC On Boot = Enabled
 */
 
-#define DECODE_NEC  // 付属リモコンはNEC方式なのでNECだけ有効にする
-#include <IRremote.hpp>
 #include <WiFi.h>
 #include <SPI.h>
 #include <MFRC522.h>
@@ -56,12 +55,14 @@ const char* WIFI_SSID = "YOUR_SSID";
 const char* WIFI_PASS = "YOUR_PASSWORD";
 
 const int DAILY_LIMIT    = 3;    // カード1枚が1日に使える回数
-const int DEFAULT_PORTIONS = 1;  // 数字を入れずにOKを押したときの杯数（1杯≈5粒）
+const int DEFAULT_PORTIONS = 1;  // カードを1回かざしたときの杯数（1杯≈5粒）
 const int MAX_PORTIONS     = 6;  // 1回に出せる最大の杯数
 const int POCKETS          = 4;  // 円盤の穴の数（穴Φ24・深さ14mm）
 const bool REVERSE_DIR   = false;           // 回る向きが逆ならtrue
 const unsigned int STEP_DELAY_US = 1500;    // 小さいほど速い。円盤が大きく重いので遅めにして力を出す
-const unsigned long INPUT_TIMEOUT_MS = 10000; // 操作がないとキャンセルするまでの時間
+const unsigned long INPUT_TIMEOUT_MS = 10000; // 管理カードの受付（登録・削除）がキャンセルされるまでの時間
+const unsigned long TAP_WAIT_MS = 2500;       // 最後にカードをかざしてから出し始めるまでの時間（この間にかざすと1杯増える）
+const bool RESET_ADMIN = false;               // 管理カードをなくしたときだけtrueにして書き込む
 
 const bool USE_DROP_SENSOR   = true;  // 障害物センサーで数えるか（falseなら回した数で決める）
 const int  MAX_EMPTY_IN_ROW  = 4;     // 続けて何回（穴何個分）落ちてこなければ「空か詰まり」とするか（4＝1周）
@@ -71,7 +72,6 @@ const unsigned long DROP_DEBOUNCE_MS = 40; // 反応のばたつきを無視す�
 
 // ===================== ピン =====================
 const int PIN_SCK = 4, PIN_MISO = 5, PIN_MOSI = 6, PIN_SS = 7, PIN_RST = 10;
-const int PIN_IR     = 2;
 const int PIN_BUZZER = 3;
 const int PIN_LED    = 8;                    // 基板上の青LED（LOWで点灯）
 const int PIN_DROP   = 9;                    // 障害物センサーOUT（検知でLOW）
@@ -82,11 +82,11 @@ const double STEPS_PER_REV = 4075.7728;      // 28BYJ-48のハーフステップ
 MFRC522 rfid(PIN_SS, PIN_RST);
 
 // 状態（Arduino IDEが関数の宣言を自動で先頭に入れるので、最初の関数より前に書いておく）
-enum Mode { IDLE, WAIT_NUMBER, REGISTER, REMOVE };
+enum Mode { IDLE, COUNTING, ADMIN };   // 待機 / 杯数を数えている / 管理カードの受付中
 Mode mode = IDLE;
 unsigned long modeSince = 0;
 String cardKey;   // 受け付け中のカード
-String digits;    // 入力中の数字
+int portions = 0; // 出す杯数
 void setMode(Mode m);
 
 volatile unsigned int dropCount = 0;
@@ -190,39 +190,11 @@ String uidKey() {  // 保存用のキー（NVSのキーは15文字までなの�
   return s;
 }
 
-// ===================== リモコン =====================
-// 付属の17キーリモコン（NEC）でよく使われるコード。
-// 違うキーが反応するときは、シリアルモニタに出る「未登録のキー」の値に書き換える
-char keyFromCommand(uint8_t c) {
-  switch (c) {
-    case 0x45: return '1'; case 0x46: return '2'; case 0x47: return '3';
-    case 0x44: return '4'; case 0x40: return '5'; case 0x43: return '6';
-    case 0x07: return '7'; case 0x15: return '8'; case 0x09: return '9';
-    case 0x16: return '*'; case 0x19: return '0'; case 0x0D: return '#';
-    case 0x18: return 'U'; case 0x52: return 'D';
-    case 0x08: return 'L'; case 0x5A: return 'R';
-    case 0x1C: return 'K';  // OK
-  }
-  return 0;
-}
-
-char readRemote() {
-  if (!IrReceiver.decode()) return 0;
-  char k = 0;
-  IRData& d = IrReceiver.decodedIRData;
-  if (d.protocol == NEC && !(d.flags & IRDATA_FLAGS_IS_REPEAT)) {
-    k = keyFromCommand(d.command);
-    if (!k) Serial.printf("未登録のキー: 0x%02X\n", d.command);
-  }
-  IrReceiver.resume();
-  return k;
-}
-
 // ===================== 動作 =====================
 void setMode(Mode m) {
   mode = m;
   modeSince = millis();
-  if (m == IDLE) { digits = ""; cardKey = ""; }
+  if (m == IDLE) { portions = 0; cardKey = ""; }
 }
 
 void dispense(int n) {
@@ -260,17 +232,55 @@ void dispense(int n) {
   setMode(IDLE);
 }
 
+String adminKey() {
+  prefs.begin("sys", true);
+  String a = prefs.getString("admin", "");
+  prefs.end();
+  return a;
+}
+
+void unjam() {                          // 詰まり解消（差し引きゼロなのでお菓子は出ない）
+  rotatePockets(-0.3);
+  rotatePockets(+0.3);
+  coilsOff();
+}
+
 void handleCard(const String& key) {
   Serial.printf("カード: %s\n", key.c_str());
+  String admin = adminKey();
 
-  if (mode == REGISTER) {
-    prefs.begin("cards", false); prefs.putBool(key.c_str(), true); prefs.end();
+  // 管理カードがまだない：最初にかざしたカードを管理カードにする
+  if (admin.length() == 0) {
+    prefs.begin("sys", false); prefs.putString("admin", key); prefs.end();
+    Serial.println("管理カードを登録しました");
     sndRegistered(); setMode(IDLE); return;
   }
-  if (mode == REMOVE) {
-    prefs.begin("cards", false); prefs.remove(key.c_str()); prefs.end();
-    prefs.begin("usage", false); prefs.remove(key.c_str()); prefs.end();
-    sndRemoved(); setMode(IDLE); return;
+
+  if (key == admin) {
+    if (mode == ADMIN) { sndKey(); unjam(); setMode(IDLE); }      // 2回目：詰まり解消
+    else if (mode == COUNTING) { sndError(); }                      // 杯数の受付中は無視
+    else { setMode(ADMIN); sndKey(); }                              // 1回目：登録・削除の受付
+    return;
+  }
+
+  if (mode == ADMIN) {
+    if (isRegistered(key)) {
+      prefs.begin("cards", false); prefs.remove(key.c_str()); prefs.end();
+      prefs.begin("usage", false); prefs.remove(key.c_str()); prefs.end();
+      sndRemoved();
+    } else {
+      prefs.begin("cards", false); prefs.putBool(key.c_str(), true); prefs.end();
+      sndRegistered();
+    }
+    setMode(IDLE); return;
+  }
+
+  if (mode == COUNTING) {               // 杯数の受付中に同じカード：1杯増やす
+    if (key != cardKey) { sndError(); return; }
+    if (portions >= MAX_PORTIONS) { sndError(); }
+    else { portions++; sndKey(); }
+    modeSince = millis();
+    return;
   }
 
   if (!isRegistered(key)) { sndError(); return; }
@@ -278,58 +288,19 @@ void handleCard(const String& key) {
   int left = DAILY_LIMIT - usedToday(key);
   if (left <= 0) { sndLimit(); setMode(IDLE); return; }
 
-  setMode(WAIT_NUMBER);
+  setMode(COUNTING);
   cardKey = key;
+  portions = DEFAULT_PORTIONS;
   sndAccept();
   delay(150);
   sndCount(left);   // 今日あと何回使えるか
   modeSince = millis();
 }
 
-void handleKey(char k) {
-  modeSince = millis();
-  bool isDigit = (k >= '0' && k <= '9');
-
-  switch (mode) {
-    case IDLE:
-      if (k == '#')      { setMode(REGISTER); sndKey(); }
-      else if (k == '*') { setMode(REMOVE);   sndKey(); }
-      else if (k == 'L') {                    // 詰まり解消（差し引きゼロなのでお菓子は出ない）
-        sndKey();
-        rotatePockets(-0.3);
-        rotatePockets(+0.3);
-        coilsOff();
-      }
-      else if (isDigit)  { beep(600, 100); }  // 先にカードをかざしてもらう合図
-      break;
-
-    case WAIT_NUMBER:
-      if (isDigit) {
-        if (digits.length() >= 2) { sndError(); }
-        else { digits += k; sndKey(); }
-      } else if (k == 'L') {                  // 1文字消す
-        if (digits.length()) digits.remove(digits.length() - 1);
-        sndKey();
-      } else if (k == '*') {
-        sndCancel(); setMode(IDLE);
-      } else if (k == 'K') {
-        int n = digits.length() ? digits.toInt() : DEFAULT_PORTIONS;
-        if (n < 1 || n > MAX_PORTIONS) { sndError(); digits = ""; }
-        else dispense(n);
-      }
-      break;
-
-    case REGISTER:
-    case REMOVE:
-      sndCancel(); setMode(IDLE);             // どのキーでもキャンセル
-      break;
-  }
-}
-
 void updateLed() {
   bool on = false;
-  if (mode == WAIT_NUMBER) on = true;
-  else if (mode == REGISTER || mode == REMOVE) on = (millis() / 200) % 2;
+  if (mode == COUNTING) on = true;
+  else if (mode == ADMIN) on = (millis() / 200) % 2;
   digitalWrite(PIN_LED, on ? LOW : HIGH);
 }
 
@@ -343,14 +314,16 @@ void setup() {
 
   SPI.begin(PIN_SCK, PIN_MISO, PIN_MOSI, PIN_SS);
   rfid.PCD_Init();
-  IrReceiver.begin(PIN_IR, DISABLE_LED_FEEDBACK);
   pinMode(PIN_DROP, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PIN_DROP), onDrop, FALLING);
 
   // 保存領域を最初に作っておく
   prefs.begin("cards", false); prefs.end();
   prefs.begin("usage", false); prefs.end();
-  prefs.begin("sys", false); bootNo = prefs.getUInt("boot", 0) + 1; prefs.putUInt("boot", bootNo); prefs.end();
+  prefs.begin("sys", false);
+  bootNo = prefs.getUInt("boot", 0) + 1; prefs.putUInt("boot", bootNo);
+  if (RESET_ADMIN) { prefs.remove("admin"); Serial.println("管理カードを消しました。次にかざしたカードが管理カードになります"); }
+  prefs.end();
 
   // Wi-Fiは日付を取るためだけ。つながらなくても動く（その間は起動から24時間ごとに回数リセット）
   if (USE_WIFI) {
@@ -370,9 +343,6 @@ void setup() {
 }
 
 void loop() {
-  char k = readRemote();
-  if (k) handleKey(k);
-
   if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
     String key = uidKey();
     rfid.PICC_HaltA();       // かざしっぱなしで連続反応しないように
@@ -380,10 +350,8 @@ void loop() {
     handleCard(key);
   }
 
-  if (mode != IDLE && millis() - modeSince > INPUT_TIMEOUT_MS) {
-    sndCancel();
-    setMode(IDLE);
-  }
+  if (mode == COUNTING && millis() - modeSince > TAP_WAIT_MS) dispense(portions);
+  if (mode == ADMIN && millis() - modeSince > INPUT_TIMEOUT_MS) { sndCancel(); setMode(IDLE); }
 
   updateLed();
 }
