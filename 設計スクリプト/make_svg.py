@@ -36,7 +36,7 @@ def write(name,outline,holes=(),engrave=(),qty=1,note=""):
     print(f"{name}_x{qty}.svg  {w-2*m:.1f} x {h-2*m:.1f} mm  穴{len(holes)}")
 sil=Polygon([(-50.7,0),(50.7,0),(W,8),(W,CH),(37,TOP),(-37,TOP),(-W,CH),(-W,8)])
 # 正面
-drawer=box(-44,3,44,28); irs=box(-10,70,10,73)
+drawer=box(-44,3,44,28); irs=box(-10,80,10,83)
 slits=[]
 for s_ in(-1,1):
     for k in range(2):
@@ -58,17 +58,17 @@ write("06_chamfer_top",box(0,0,math.hypot(W-37,TOP-CH),2*DI),qty=2,note="上の�
 write("07_top",box(-37,-DI-3,37,DI+3),[box(-28,-40,28,40)],note="天板（補充口）")
 write("08_hatch",box(-31,-43,31,43),[box(-14,-5,14,5)],note="補充口のフタ")
 shelf=box(-55.7,-DI,55.7,DI)
-write("09_shelf",shelf,[Point(0,-20).buffer(10,64),box(-22,-7,22,23)]+[Point(x,-20).buffer(1.7,32) for x in(-19,19)]+
-      [Point(39.5*math.cos(math.radians(a+180)),39.5*math.sin(math.radians(a+180))).buffer(1.7,32) for a in(30,150,270)],note="中棚（出口・モーター・ネジ穴）")
+write("09_shelf",shelf,[Point(0,-40).buffer(14,64),box(-22,-21,22,9)]+[Point(x,-40).buffer(1.7,32) for x in(-22,22)]+
+      [Point(47*math.cos(math.radians(a+180)),-14+47*math.sin(math.radians(a+180))).buffer(1.7,32) for a in(30,150,270)],note="中棚（出口・モーター・ネジ穴）")
 arm=Polygon([(-53,40),(53,40),(53,139),(40,149),(-40,149),(-53,139)])
 ring=crect(-38,90,38,146,9).difference(crect(-38,90,38,146,9).buffer(-1.4,join_style=2))
 write("10_armor",arm,[crect(-32,96,32,140,6),irs]+[sl.intersection(arm.buffer(-1.5)) for sl in slits if sl.intersects(arm.buffer(-1.5))],[ring],note="正面アーマー板（中央＝カード枠）")
-write("11_tank_fb",box(0,0,104,28),qty=2,note="内箱 前後")
-write("12_tank_lr",box(0,0,116,28),qty=2,note="内箱 左右")
-fF=math.hypot(61,65); fB=math.hypot(21,65); fS=math.hypot(32,65)
-write("13_funnel_front",Polygon([(-52,fF),(52,fF),(20,0),(-20,0)]),note="じょうご 前")
-write("14_funnel_back",Polygon([(-52,fB),(52,fB),(20,0),(-20,0)]),note="じょうご 後ろ")
-write("15_funnel_side",Polygon([(-61,fS),(61,fS),(40,0),(0,0)]),qty=2,note="じょうご 左右")
+write("11_tank_fb",box(0,0,104,18),qty=2,note="内箱 前後")
+write("12_tank_lr",box(0,0,116,18),qty=2,note="内箱 左右")
+fF=math.hypot(56,69); fB=math.hypot(32,69); fS=math.hypot(35,69)   # じょうご：下の口34×34（z81）→上105×122（z150）
+write("13_funnel_front",Polygon([(-52,fF),(52,fF),(17,0),(-17,0)]),note="じょうご 前")
+write("14_funnel_back",Polygon([(-52,fB),(52,fB),(17,0),(-17,0)]),note="じょうご 後ろ")
+write("15_funnel_side",Polygon([(-61,fS),(61,fS),(29,0),(-5,0)]),qty=2,note="じょうご 左右")
 write("16_drawer_bottom",box(0,0,80,56),note="引き出し 底")
 write("17_drawer_long",box(0,0,80,19),qty=2,note="引き出し 前後の壁")
 write("18_drawer_short",box(0,0,50,19),qty=2,note="引き出し 左右の壁")

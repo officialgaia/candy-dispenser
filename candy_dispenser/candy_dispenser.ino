@@ -4,12 +4,13 @@
   使い方
     1. 登録済みのICカードをRC522にかざす
        → 「ピピッ」のあと、今日あと何回使えるかを短い音の数で知らせる
-    2. リモコンの数字キーで粒数を入れて OK（数字なしで OK ならDEFAULT_PIECES粒）
+    2. リモコンの数字キーで杯数を入れて OK（数字なしで OK ならDEFAULT_PORTIONS杯）
+       1杯＝円盤の穴1つ分（M&Mで約5粒。4〜6粒のばらつきあり）
        ← キー：1文字消す / * キー：キャンセル
-    3. 円盤が回って1粒ずつ落ち、終わったらメロディが鳴る
-       障害物センサーで落ちた粒を数え、足りなければ追加で回す。
+    3. 円盤が1/4回転するごとに1杯分落ち、終わったらメロディが鳴る
+       障害物センサーで1杯ごとに落ちたかを確かめ、空振りした分は追加で回す。
        何回回しても落ちてこなければ「空か詰まり」としてエラー音で止まる
-       （1粒も出なかったときは、その回は使用回数に数えない）
+       （1杯も出なかったときは、その回は使用回数に数えない）
 
   カードの登録と削除（リモコン）
     #  → カードをかざす：登録（青LEDが点滅しているあいだ受付）
@@ -51,18 +52,18 @@ const char* WIFI_SSID = "YOUR_SSID";      // 日付（1日の回数制限）を�
 const char* WIFI_PASS = "YOUR_PASSWORD";
 
 const int DAILY_LIMIT    = 3;    // カード1枚が1日に使える回数
-const int DEFAULT_PIECES = 5;    // 数字を入れずにOKを押したときの粒数
-const int MAX_PIECES     = 20;   // 1回に出せる最大の粒数
-const int POCKETS        = 6;    // 円盤の穴の数
+const int DEFAULT_PORTIONS = 1;  // 数字を入れずにOKを押したときの杯数（1杯≈5粒）
+const int MAX_PORTIONS     = 6;  // 1回に出せる最大の杯数
+const int POCKETS          = 4;  // 円盤の穴の数（穴Φ24・深さ14mm）
 const bool REVERSE_DIR   = false;           // 回る向きが逆ならtrue
-const unsigned int STEP_DELAY_US = 1200;    // 小さいほど速い（速すぎると脱調する）
+const unsigned int STEP_DELAY_US = 1500;    // 小さいほど速い。円盤が大きく重いので遅めにして力を出す
 const unsigned long INPUT_TIMEOUT_MS = 10000; // 操作がないとキャンセルするまでの時間
 
 const bool USE_DROP_SENSOR   = true;  // 障害物センサーで数えるか（falseなら回した数で決める）
-const int  MAX_EMPTY_IN_ROW  = 4;     // 続けて何回落ちてこなければ「空か詰まり」とするか
-const int  MAX_EXTRA_TURNS   = 8;     // 取り逃がし分として追加で回す上限
-const unsigned long DROP_WAIT_MS   = 350; // 1穴分回したあと、落ちてくるのを待つ時間
-const unsigned long DROP_DEBOUNCE_MS = 40; // 1粒を2回数えないための間隔
+const int  MAX_EMPTY_IN_ROW  = 4;     // 続けて何回（穴何個分）落ちてこなければ「空か詰まり」とするか（4＝1周）
+const int  MAX_EXTRA_TURNS   = 4;     // 空振り分として追加で回す上限（穴の数）
+const unsigned long DROP_WAIT_MS   = 400; // 1穴分回したあと、落ちてくるのを待つ時間
+const unsigned long DROP_DEBOUNCE_MS = 40; // 反応のばたつきを無視する間隔
 
 // ===================== ピン =====================
 const int PIN_SCK = 4, PIN_MISO = 5, PIN_MOSI = 6, PIN_SS = 7, PIN_RST = 10;
@@ -215,7 +216,7 @@ void setMode(Mode m) {
 }
 
 void dispense(int n) {
-  Serial.printf("%d粒出します\n", n);
+  Serial.printf("%d杯出します\n", n);
   digitalWrite(PIN_LED, LOW);
 
   if (!USE_DROP_SENSOR) {               // センサーなし：回した数で決める
@@ -227,27 +228,25 @@ void dispense(int n) {
     return;
   }
 
-  // センサーあり：落ちた粒を数え、足りなければ追加で回す
+  // センサーあり：穴1つ分回すごとに「何か落ちたか」を確かめる（5粒前後がまとめて落ちるので粒は数えない）
   noInterrupts(); dropCount = 0; interrupts();
-  int turns = 0, emptyInRow = 0;
-  unsigned int got = 0;
-  while (got < (unsigned)n && turns < n + MAX_EXTRA_TURNS) {
-    unsigned int before = got;
+  int turns = 0, emptyInRow = 0, done = 0;
+  while (done < n && turns < n + MAX_EXTRA_TURNS) {
+    unsigned int before = dropCount;
     rotatePockets(1);
     turns++;
     unsigned long t0 = millis();
-    while (millis() - t0 < DROP_WAIT_MS) { got = dropCount; if (got > before) break; delay(5); }
-    delay(60);                          // 跳ね返りを数え終える
-    got = dropCount;
-    if (got > before) emptyInRow = 0;
+    while (millis() - t0 < DROP_WAIT_MS && dropCount == before) delay(5);
+    delay(100);                         // 固まりが落ち切るのを待つ
+    if (dropCount > before) { done++; emptyInRow = 0; }
     else if (++emptyInRow >= MAX_EMPTY_IN_ROW) break;
   }
   coilsOff();
-  Serial.printf("落ちた粒: %u / %d（%d回転）\n", got, n, turns);
+  Serial.printf("出た杯数: %d / %d（%d回転）\n", done, n, turns);
 
-  if (got > 0) addUse(cardKey);         // 1粒も出なければ使用回数に数えない
-  if (got >= (unsigned)n) sndDone();
-  else { sndError(); sndCount((int)min(got, 10u)); }  // 足りなかった：エラー音＋出た粒数（最大10回）
+  if (done > 0) addUse(cardKey);        // 1杯も出なければ使用回数に数えない
+  if (done >= n) sndDone();
+  else { sndError(); sndCount(done); }  // 足りなかった：エラー音＋出た杯数
   setMode(IDLE);
 }
 
@@ -304,8 +303,8 @@ void handleKey(char k) {
       } else if (k == '*') {
         sndCancel(); setMode(IDLE);
       } else if (k == 'K') {
-        int n = digits.length() ? digits.toInt() : DEFAULT_PIECES;
-        if (n < 1 || n > MAX_PIECES) { sndError(); digits = ""; }
+        int n = digits.length() ? digits.toInt() : DEFAULT_PORTIONS;
+        if (n < 1 || n > MAX_PORTIONS) { sndError(); digits = ""; }
         else dispense(n);
       }
       break;
