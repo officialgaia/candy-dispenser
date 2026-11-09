@@ -75,14 +75,14 @@ fpan=M.compose([plate4((-52,-61,zt),(52,-61,zt),(20,0,zb),(-20,0,zb)),plate4((-5
                 plate4((-52,-61,zt),(-52,61,zt),(-20,40,zb),(-20,0,zb)),plate4((52,-61,zt),(52,61,zt),(20,40,zb),(20,0,zb))])
 tz0,tz1=29,SH-3
 tube=cyl(13,tz1-tz0,0,-20,tz0)-cyl(10,tz1-tz0+2,0,-20,tz0-1)
-tube+=box(-24,24,-34,-6,tz1-2.5,tz1)-cyl(10,5,0,-20,tz1-4)              # 中棚にネジ止めするつば
+tube+=box(-24,24,-34,-9,tz1-2.5,tz1)-cyl(10,5,0,-20,tz1-4)              # 中棚にネジ止めするつば
 for x in(-19,19): tube-=cyl(1.7,5,x,-20,tz1-4)
 tube-=box(9,15,-25,-15,33,41)                                            # センサーの窓（+x側）
 tube+=box(13,48,-27,-13,30,32)                                           # センサーを載せる台
 g=tube.translate((0,20,-tz0)).to_mesh(); trimesh.Trimesh(g.vert_properties[:,:3],g.tri_verts).export("sensor_tube.stl")
 sens=box(15,47,-26,-14,32,34)+box(13,17,-24,-16,34,38)
 Rz=lambda m:m.rotate((0,0,180))
-PT={"mdf":M.compose(mdf),"engrave":None,"armor":armor,"lid":box(-37,37,-DI-3,DI+3,TOP-3,TOP)-box(-28,28,-40,40,TOP-4,TOP+1),"hatch":box(-31,31,-43,43,TOP,TOP+3)-box(-14,14,-5,5,TOP-1,TOP+4),
+PT={"mdf":M.compose(mdf),"engrave":None,"armor":armor,"lid":box(-37,37,-DI-3,DI+3,TOP,TOP+3)-box(-28,28,-40,40,TOP-1,TOP+4),"hatch":box(-31,31,-43,43,TOP+3,TOP+6)-box(-14,14,-5,5,TOP+2,TOP+7),
  "led":box(-55,55,-64.5,-63,30,60),
  "base":Rz(ld("base")).translate((0,0,SH)),"disc":Rz(ld("disc")).translate((0,0,SH+1.5)),"adapter":Rz(ad).translate((0,0,SH+12)),"mdf_funnel":fpan,"mdf_tank":box(-52,52,-61,61,140,168)-box(-49,49,-58,58,139,169),"mdf_drawer":drawer,"drawer_face":dface,"rails":rails,
  "motor":cyl(14,19,0,8,SH-19)+box(-21,21,4,12,SH-1,SH),"rc522":box(-30,30,-64,-62.4,98,138),"ir_rx":box(-6,6,-64,-59,66,76),

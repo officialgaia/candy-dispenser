@@ -13,9 +13,9 @@ for i in range(P): a=2*np.pi*i/P; d-=cyl(PD/2,TD+2,PR*np.cos(a),PR*np.sin(a),-1)
 d-=(cyl(2.6,TD+6,z=-3)-box(-5,5,1.55,7,-4,TD+4)-box(-5,5,-7,-1.55,-4,TD+4)); d=d.translate((0,0,2))
 save(d,"disc.stl")
 # 底板 Φ80
-b=cyl(40,3)+(cyl(WO,12)-cyl(WI,13,z=-.5))-cyl(5,5,z=-1)-cyl(8.5,5,0,PR,-1)
+b=cyl(43,3)+(cyl(WO,12)-cyl(WI,13,z=-.5))-cyl(5,5,z=-1)-cyl(8.5,5,0,PR,-1)
 for x in(-17.5,17.5): b-=cyl(2.1,5,x,-8,-1)
-for a in(30,150,270): b-=cyl(1.7,5,37.7*np.cos(np.radians(a)),37.7*np.sin(np.radians(a)),-1)
+for a in(30,150,270): b-=cyl(1.7,5,39.5*np.cos(np.radians(a)),39.5*np.sin(np.radians(a)),-1)
 for r in pins: b+=cyl(1.1,3,PIN*np.cos(r),PIN*np.sin(r),12)
 save(b,"base.stl")
 # ホッパー（ふた一体）

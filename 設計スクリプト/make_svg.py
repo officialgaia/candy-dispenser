@@ -59,7 +59,7 @@ write("07_top",box(-37,-DI-3,37,DI+3),[box(-28,-40,28,40)],note="天板（補充
 write("08_hatch",box(-31,-43,31,43),[box(-14,-5,14,5)],note="補充口のフタ")
 shelf=box(-55.7,-DI,55.7,DI)
 write("09_shelf",shelf,[Point(0,-20).buffer(10,64),box(-22,-7,22,23)]+[Point(x,-20).buffer(1.7,32) for x in(-19,19)]+
-      [Point(37.7*math.cos(math.radians(a+180)),37.7*math.sin(math.radians(a+180))).buffer(1.7,32) for a in(30,150,270)],note="中棚（出口・モーター・ネジ穴）")
+      [Point(39.5*math.cos(math.radians(a+180)),39.5*math.sin(math.radians(a+180))).buffer(1.7,32) for a in(30,150,270)],note="中棚（出口・モーター・ネジ穴）")
 arm=Polygon([(-53,40),(53,40),(53,139),(40,149),(-40,149),(-53,139)])
 ring=crect(-38,90,38,146,9).difference(crect(-38,90,38,146,9).buffer(-1.4,join_style=2))
 write("10_armor",arm,[crect(-32,96,32,140,6),irs]+[sl.intersection(arm.buffer(-1.5)) for sl in slits if sl.intersects(arm.buffer(-1.5))],[ring],note="正面アーマー板（中央＝カード枠）")
