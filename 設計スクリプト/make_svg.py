@@ -36,14 +36,14 @@ def write(name,outline,holes=(),engrave=(),qty=1,note=""):
     print(f"{name}_x{qty}.svg  {w-2*m:.1f} x {h-2*m:.1f} mm  穴{len(holes)}")
 sil=Polygon([(-50.7,0),(50.7,0),(W,8),(W,CH),(37,TOP),(-37,TOP),(-W,CH),(-W,8)])
 # 正面
-drawer=box(-44,3,44,28)
+drawer=box(-44,3,44,28); irs=box(-10,80,10,83)
 slits=[]
 for s_ in(-1,1):
     for k in range(2):
         cx=s_*(50+k*3); slits.append(rbox(cx-s_*4.65,36+k*2+9.97,2,22,s_*25))
 keep=sil.buffer(-4).intersection(box(-50,153,52,168).buffer(4))
 fh=hexes(box(-50,153,52,168),keep)
-write("01_front",sil,[drawer]+slits+fh,note="正面")
+write("01_front",sil,[drawer,irs]+slits+fh,note="正面")
 # 背面
 usb=box(-6,3,6,9); keep=sil.buffer(-4).difference(usb.buffer(4))
 bh=hexes(box(-48,16,50,167),keep)
@@ -62,7 +62,7 @@ write("09_shelf",shelf,[Point(0,-40).buffer(14,64),box(-22,-21,22,9)]+[Point(x,-
       [Point(47*math.cos(math.radians(a+180)),-14+47*math.sin(math.radians(a+180))).buffer(1.7,32) for a in(30,150,270)],note="中棚（出口・モーター・ネジ穴）")
 arm=Polygon([(-53,40),(53,40),(53,139),(40,149),(-40,149),(-53,139)])
 ring=crect(-38,90,38,146,9).difference(crect(-38,90,38,146,9).buffer(-1.4,join_style=2))
-write("10_armor",arm,[crect(-32,96,32,140,6)]+[sl.intersection(arm.buffer(-1.5)) for sl in slits if sl.intersects(arm.buffer(-1.5))],[ring],note="正面アーマー板（中央＝カード枠）")
+write("10_armor",arm,[crect(-32,96,32,140,6),irs]+[sl.intersection(arm.buffer(-1.5)) for sl in slits if sl.intersects(arm.buffer(-1.5))],[ring],note="正面アーマー板（中央＝カード枠）")
 write("11_tank_fb",box(0,0,111.4,18),qty=2,note="内箱 前後（外壁の内側いっぱい・外壁に接着）")
 write("12_tank_lr",box(0,0,126,18),qty=2,note="内箱 左右（前後板の間に入る・外壁に接着）")
 fF=math.hypot(58,69); fB=math.hypot(34,69); fS=math.hypot(35.7,69)   # じょうご：下の口34×34（z81）→上105.4×126（z150＝内箱の内側）

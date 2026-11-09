@@ -25,7 +25,7 @@ eng=[]
 fe=P([(0,0),(1,0),(1,1)]).translate((500,500))
 fe=fe
 e=onY(fe,-DI-2.4); eng.append(e)
-fr=panel(-DI)-hexes(-50,52,153,168).rotate((0,0,90)).translate((0,-DI-1,0))-box(-44,44,-70,-65,3,28)-e
+fr=panel(-DI)-hexes(-50,52,153,168).rotate((0,0,90)).translate((0,-DI-1,0))-box(-44,44,-70,-65,3,28)-box(-10,10,-70,-65,80,83)-e
 for s in(-1,1):
     for k in range(2): fr-=box(-1,1,-70,-65,0,22).rotate((0,s*-25,0)).translate((s*(50+k*3),0,36+k*2))
 # アーマー（カード枠はRC522に合わせて実寸）
@@ -36,7 +36,7 @@ for sx in(-1,1):
     for sz,z0 in(): ae=ae+P([(sx*72,z0),(sx*72,z0+sz*18),(sx*72-sx*3,z0+sz*18),(sx*72-sx*3,z0+sz*3),(sx*54,z0+sz*3),(sx*54,z0)])  # 角のブラケット
 ae=ae
 armor=P(arm_pts).extrude(3).rotate((90,0,0)).translate((0,-DI-3,0))-P(oct_).extrude(5).rotate((90,0,0)).translate((0,-DI-2,0))
-a_e=onY(ae,-DI-5.4); armor-=a_e; eng.append(a_e)
+a_e=onY(ae,-DI-5.4); armor-=a_e; armor-=box(-10,10,-75,-65,80,83); eng.append(a_e)
 for s_ in(-1,1):
     for k in range(2): armor-=box(-1,1,-76,-64,0,22).rotate((0,s_*-25,0)).translate((s_*(50+k*3),0,36+k*2))
 # 側面：ハニカム帯＋枠線＋ストライプ
@@ -118,9 +118,9 @@ PT={"mdf":M.compose(mdf),"engrave":None,"armor":armor,"lid":box(-37,37,-DI-3,DI+
  "led":box(-54,-34,-64.5,-63,30,44)+box(34,54,-64.5,-63,30,44),   # LEDモジュール左右1個ずつ（中棚の下、スリットの裏）
  
  "base":Rz(b).translate((0,SY,SH)),"disc":Rz(d).translate((0,SY,SH+1.5)),"adapter":Rz(ad).translate((0,SY,SH+WT)),"mdf_funnel":fpan,"mdf_tank":box(-55.7,55.7,-66,66,zt,168)-box(-52.7,52.7,-63,63,zt-1,169),"mdf_drawer":drawer,"drawer_face":dface,"rails":rails,"support":cleats+rib,
- "motor":cyl(14,19,0,8+SY,SH-19)+box(-21,21,4+SY,12+SY,SH-1,SH),"rc522":box(-30,30,-64,-62.4,98,138),
+ "motor":cyl(14,19,0,8+SY,SH-19)+box(-21,21,4+SY,12+SY,SH-1,SH),"rc522":box(-30,30,-64,-62.4,98,138),"ir_rx":box(-6,6,-64,-59,76,86),
  "esp32":box(18,40,44,66,3,7),"uln2003":box(-17,17,58,66,52,84),"buzzer":box(-40,-26,50,66,3,9),"sensor_tube":tube,"sensor":sens}
-col={"sensor_tube":["#6fbf8f",1],"sensor":["#2e7d32",1],"mdf":["#1b1b22",.5],"engrave":["#c9a27a",1],"armor":["#2a2a36",1],"lid":["#1b1b22",1],"hatch":["#ff2bd6",1],"led":["#00e5ff",1],"base":["#8fa3b8",1],"disc":["#e8a33d",1],"adapter":["#6fbf8f",1],"mdf_funnel":["#2a2a36",1],"mdf_tank":["#2a2a36",1],"mdf_drawer":["#2a2a36",1],"drawer_face":["#2a2a36",1],"rails":["#1b1b22",1],"support":["#3a3a48",1],"motor":["#c0c0c8",1],"rc522":["#1976d2",1],"esp32":["#1565c0",1],"uln2003":["#2e7d32",1],"buzzer":["#444",1]}
+col={"sensor_tube":["#6fbf8f",1],"sensor":["#2e7d32",1],"mdf":["#1b1b22",.5],"engrave":["#c9a27a",1],"armor":["#2a2a36",1],"lid":["#1b1b22",1],"hatch":["#ff2bd6",1],"led":["#00e5ff",1],"base":["#8fa3b8",1],"disc":["#e8a33d",1],"adapter":["#6fbf8f",1],"mdf_funnel":["#2a2a36",1],"mdf_tank":["#2a2a36",1],"mdf_drawer":["#2a2a36",1],"drawer_face":["#2a2a36",1],"rails":["#1b1b22",1],"support":["#3a3a48",1],"motor":["#c0c0c8",1],"rc522":["#1976d2",1],"ir_rx":["#555",1],"esp32":["#1565c0",1],"uln2003":["#2e7d32",1],"buzzer":["#444",1]}
 PT['engrave']=M.compose([e for e in eng if max(e.bounding_box()[3:])<400])
 import trimesh as _t
 sc=_t.Scene()
