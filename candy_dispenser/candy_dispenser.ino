@@ -48,7 +48,11 @@
 #include <time.h>
 
 // ===================== 設定 =====================
-const char* WIFI_SSID = "YOUR_SSID";      // 日付（1日の回数制限）を取るためだけに使う
+// Wi-Fiは「1日の回数制限」の日付を取るためだけに使う。なくても他の機能はすべて動く。
+// Wi-Fiなし（USE_WIFI=false、またはつながらないとき）は、電源を入れてから24時間ごと、
+// または電源を入れ直したときに回数がリセットされる。
+const bool  USE_WIFI  = true;
+const char* WIFI_SSID = "YOUR_SSID";
 const char* WIFI_PASS = "YOUR_PASSWORD";
 
 const int DAILY_LIMIT    = 3;    // カード1枚が1日に使える回数
@@ -138,11 +142,14 @@ void sndDone()       { beep(1568, 100); beep(2093, 100); beep(2637, 100); beep(3
 void sndCount(int n) { for (int i = 0; i < n; i++) { beep(2500, 60); delay(120); } }
 
 // ===================== 日付と使用回数 =====================
-uint32_t today() {  // 例：20261107。時刻が取れていなければ0
+uint32_t bootNo = 0;  // 電源を入れた回数（Wi-Fiなしのときの「日」の区切りに使う）
+
+uint32_t today() {  // 例：20261107。時刻が取れないときは「起動番号＋起動からの日数」を日付の代わりにする
   struct tm t;
-  if (!getLocalTime(&t, 0)) return 0;
-  if (t.tm_year + 1900 < 2024) return 0;
-  return (t.tm_year + 1900) * 10000UL + (t.tm_mon + 1) * 100UL + t.tm_mday;
+  if (getLocalTime(&t, 0) && t.tm_year + 1900 >= 2024)
+    return (t.tm_year + 1900) * 10000UL + (t.tm_mon + 1) * 100UL + t.tm_mday;
+  // 30000000〜38999999：本物の日付（2千万台）とは重ならない
+  return 30000000UL + (bootNo % 9000) * 1000UL + (millis() / 86400000UL) % 1000;
 }
 
 // 保存形式：日付×100＋その日の回数
@@ -340,16 +347,21 @@ void setup() {
   // 保存領域を最初に作っておく
   prefs.begin("cards", false); prefs.end();
   prefs.begin("usage", false); prefs.end();
+  prefs.begin("sys", false); bootNo = prefs.getUInt("boot", 0) + 1; prefs.putUInt("boot", bootNo); prefs.end();
 
-  // Wi-Fiは日付を取るためだけ。つながらなくても動く（その間は回数がリセットされない）
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-  WiFi.setTxPower(WIFI_POWER_8_5dBm);  // SuperMiniはこれでつながりやすくなる個体が多い
-  configTzTime("JST-9", "ntp.nict.jp", "pool.ntp.org");
-
-  unsigned long t0 = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - t0 < 15000) delay(200);
-  Serial.println(WiFi.status() == WL_CONNECTED ? "Wi-Fi接続OK" : "Wi-Fiにつながりません（後で自動再接続）");
+  // Wi-Fiは日付を取るためだけ。つながらなくても動く（その間は起動から24時間ごとに回数リセット）
+  if (USE_WIFI) {
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+    WiFi.setTxPower(WIFI_POWER_8_5dBm);  // SuperMiniはこれでつながりやすくなる個体が多い
+    configTzTime("JST-9", "ntp.nict.jp", "pool.ntp.org");
+    unsigned long t0 = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - t0 < 15000) delay(200);
+    Serial.println(WiFi.status() == WL_CONNECTED ? "Wi-Fi接続OK" : "Wi-Fiにつながりません（後で自動再接続）");
+  } else {
+    WiFi.mode(WIFI_OFF);
+    Serial.println("Wi-Fiなしで動作（回数は起動から24時間ごと、または電源の入れ直しでリセット）");
+  }
 
   sndReady();
 }
