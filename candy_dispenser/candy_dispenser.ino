@@ -81,6 +81,14 @@ const double STEPS_PER_REV = 4075.7728;      // 28BYJ-48のハーフステップ
 
 MFRC522 rfid(PIN_SS, PIN_RST);
 
+// 状態（Arduino IDEが関数の宣言を自動で先頭に入れるので、最初の関数より前に書いておく）
+enum Mode { IDLE, WAIT_NUMBER, REGISTER, REMOVE };
+Mode mode = IDLE;
+unsigned long modeSince = 0;
+String cardKey;   // 受け付け中のカード
+String digits;    // 入力中の数字
+void setMode(Mode m);
+
 volatile unsigned int dropCount = 0;
 volatile unsigned long lastDropMs = 0;
 void IRAM_ATTR onDrop() {
@@ -89,11 +97,6 @@ void IRAM_ATTR onDrop() {
 }
 Preferences prefs;
 
-enum Mode { IDLE, WAIT_NUMBER, REGISTER, REMOVE };
-Mode mode = IDLE;
-unsigned long modeSince = 0;
-String cardKey;   // 受け付け中のカード
-String digits;    // 入力中の数字
 
 // ===================== ステッピングモーター =====================
 const uint8_t SEQ[8][4] = {
