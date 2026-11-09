@@ -65,6 +65,11 @@ drawer=box(-40,40,-66,-10,4,26)-box(-37,37,-63,-13,7,30)
 dfe=onY(chev(0,6,16,6,3),-72.0)
 dface=box(-48,48,-72,-69,2,30)-box(-18,18,-73,-68,18,24)-dfe; eng.append(dfe)
 rails=box(-43,-41,-66,-10,3,8)+box(41,43,-66,-10,3,8)
+# 中棚の下の支え：左右・後ろの受け木（外壁に面で接着）＋モーターの後ろの縦リブ（底板から中棚までを直接支える）
+CL0=SH-13
+cleats=box(-WI,-WI+3,-60,63,CL0,SH-3)+box(WI-3,WI,-60,63,CL0,SH-3)+box(-WI+3,WI-3,63,66,CL0,SH-3)
+RIBY=16
+rib=box(-30,30,RIBY,RIBY+3,3,SH-3)-box(-10,10,RIBY-1,RIBY+4,2,11)        # 下に配線を通す切り欠き20×8
 # ===== 回転部の寸法（M&M 1穴≈5粒）=====
 # M&M（ミルクチョコ）：直径12〜13.5mm、厚さ6.5〜7.5mm。1粒≒0.66cm3、ばら積みの充填率≒0.6 → 5粒≒5.5cm3
 P=4; PR=26; PD=24; TD=14          # 穴4個、穴の中心半径26、穴径24、円盤の厚さ14 → 1穴6.3cm3（5粒前後）
@@ -75,12 +80,13 @@ HOLE=26                            # 出口・投入口の穴径（穴径24よ�
 AH=15; SQ=17                       # 変換口の高さ、上の四角い口の内側の半幅（34×34）
 SY=-14                             # 回転部をワールドで前に14mmずらす（じょうごの傾斜を45°以上にするため）
 pins=[np.radians(a+90) for a in(0,120,240)]
-d=cyl(RD,TD)+cyl(4,2,z=-2)
+d=cyl(RD,TD)+cyl(4,1.5,z=-1.5)   # 下の突起は底板の穴に入る（モーターのボスとは0.5mmあける）
 for i in range(P): a=2*np.pi*i/P; d-=cyl(PD/2,TD+2,PR*np.cos(a),PR*np.sin(a),-1)
 d-=(cyl(2.625,TD+8,z=-4)-box(-5,5,1.6,7,-5,TD+5)-box(-5,5,-7,-1.6,-5,TD+5))   # D軸：Φ5.25・平面間3.2
 d=d.translate((0,0,2))
 g=d.to_mesh(); trimesh.Trimesh(g.vert_properties[:,:3],g.tri_verts).export("disc.stl")
-b=cyl(BASE_R,3)+(cyl(WO,WT)-cyl(WIN,WT+1,z=-.5))-cyl(5,5,z=-1)-cyl(HOLE/2,5,0,PR,-1)
+FL=3.5   # 底板の床の厚さ＝円盤の下面の高さ（円盤は床に直接のって、重さを床で受ける）
+b=cyl(BASE_R,FL)+(cyl(WO,WT)-cyl(WIN,WT+1,z=-.5))-cyl(5,5,z=-1)-cyl(HOLE/2,5,0,PR,-1)
 for x in(-17.5,17.5): b-=cyl(2.1,5,x,-8,-1)
 for a in(30,150,270): b-=cyl(1.7,5,SCREW_R*np.cos(np.radians(a)),SCREW_R*np.sin(np.radians(a)),-1)
 for r in pins: b+=cyl(1.1,3,PIN*np.cos(r),PIN*np.sin(r),WT)
@@ -109,11 +115,12 @@ g=tube.translate((0,-EY,-tz0)).to_mesh(); trimesh.Trimesh(g.vert_properties[:,:3
 sens=box(19,51,EY-6,EY+6,32,34)+box(17,21,EY-4,EY+4,34,38)
 Rz=lambda m:m.rotate((0,0,180))
 PT={"mdf":M.compose(mdf),"engrave":None,"armor":armor,"lid":box(-37,37,-DI-3,DI+3,TOP,TOP+3)-box(-28,28,-40,40,TOP-1,TOP+4),"hatch":box(-31,31,-43,43,TOP+3,TOP+6)-box(-14,14,-5,5,TOP+2,TOP+7),
- "led":box(-55,55,-64.5,-63,30,60),
- "base":Rz(b).translate((0,SY,SH)),"disc":Rz(d).translate((0,SY,SH+1.5)),"adapter":Rz(ad).translate((0,SY,SH+WT)),"mdf_funnel":fpan,"mdf_tank":box(-55.7,55.7,-66,66,zt,168)-box(-52.7,52.7,-63,63,zt-1,169),"mdf_drawer":drawer,"drawer_face":dface,"rails":rails,
+ "led":box(-54,-34,-64.5,-63,30,44)+box(34,54,-64.5,-63,30,44),   # LEDモジュール左右1個ずつ（中棚の下、スリットの裏）
+ 
+ "base":Rz(b).translate((0,SY,SH)),"disc":Rz(d).translate((0,SY,SH+1.5)),"adapter":Rz(ad).translate((0,SY,SH+WT)),"mdf_funnel":fpan,"mdf_tank":box(-55.7,55.7,-66,66,zt,168)-box(-52.7,52.7,-63,63,zt-1,169),"mdf_drawer":drawer,"drawer_face":dface,"rails":rails,"support":cleats+rib,
  "motor":cyl(14,19,0,8+SY,SH-19)+box(-21,21,4+SY,12+SY,SH-1,SH),"rc522":box(-30,30,-64,-62.4,98,138),"ir_rx":box(-6,6,-64,-59,76,86),
  "esp32":box(18,40,44,66,3,7),"uln2003":box(-17,17,58,66,52,84),"buzzer":box(-40,-26,50,66,3,9),"sensor_tube":tube,"sensor":sens}
-col={"sensor_tube":["#6fbf8f",1],"sensor":["#2e7d32",1],"mdf":["#1b1b22",.5],"engrave":["#c9a27a",1],"armor":["#2a2a36",1],"lid":["#1b1b22",1],"hatch":["#ff2bd6",1],"led":["#00e5ff",1],"base":["#8fa3b8",1],"disc":["#e8a33d",1],"adapter":["#6fbf8f",1],"mdf_funnel":["#2a2a36",1],"mdf_tank":["#2a2a36",1],"mdf_drawer":["#2a2a36",1],"drawer_face":["#2a2a36",1],"rails":["#1b1b22",1],"motor":["#c0c0c8",1],"rc522":["#1976d2",1],"ir_rx":["#555",1],"esp32":["#1565c0",1],"uln2003":["#2e7d32",1],"buzzer":["#444",1]}
+col={"sensor_tube":["#6fbf8f",1],"sensor":["#2e7d32",1],"mdf":["#1b1b22",.5],"engrave":["#c9a27a",1],"armor":["#2a2a36",1],"lid":["#1b1b22",1],"hatch":["#ff2bd6",1],"led":["#00e5ff",1],"base":["#8fa3b8",1],"disc":["#e8a33d",1],"adapter":["#6fbf8f",1],"mdf_funnel":["#2a2a36",1],"mdf_tank":["#2a2a36",1],"mdf_drawer":["#2a2a36",1],"drawer_face":["#2a2a36",1],"rails":["#1b1b22",1],"support":["#3a3a48",1],"motor":["#c0c0c8",1],"rc522":["#1976d2",1],"ir_rx":["#555",1],"esp32":["#1565c0",1],"uln2003":["#2e7d32",1],"buzzer":["#444",1]}
 PT['engrave']=M.compose([e for e in eng if max(e.bounding_box()[3:])<400])
 import trimesh as _t
 sc=_t.Scene()

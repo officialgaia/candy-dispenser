@@ -9,18 +9,19 @@
 <path d="M23.36,13.39 L22.52,15.21 L6.50,7.74 L6.50,6.50 L8.58,6.50 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
 <path d="M20.52,97.79 L21.36,99.61 L6.50,106.54 L6.50,104.33 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
 <path d="M22.52,100.79 L23.36,102.61 L8.58,109.50 L6.50,109.50 L6.50,108.26 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
-<path d="M191.00,143.00 L191.00,5.00 L117.00,5.00 L117.00,143.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
-<path d="M182.00,114.00 L182.00,34.00 L126.00,34.00 L126.00,114.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
-<path d="M5.00,176.00 L91.00,176.00 L91.00,114.00 L5.00,114.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
-<path d="M43.00,159.00 L53.00,159.00 L53.00,131.00 L43.00,131.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
-<path d="M94.00,182.22 L226.00,182.22 L226.00,146.00 L94.00,146.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
-<path d="M206.00,37.00 L200.00,53.00 L206.00,69.00 L209.00,69.00 L203.00,53.00 L209.00,37.00 Z" fill="#000000" fill-rule="evenodd" stroke="none"/>
-<path d="M194.00,101.00 L222.00,101.00 L222.00,5.00 L194.00,5.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
-<path d="M210.00,71.00 L216.00,71.00 L216.00,35.00 L210.00,35.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
-<path d="M55.00,198.00 L55.00,179.00 L5.00,179.00 L5.00,198.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
-<path d="M244.00,123.00 L244.00,104.00 L194.00,104.00 L194.00,123.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
-<path d="M247.00,131.00 L265.00,131.00 L265.00,5.00 L247.00,5.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
-<path d="M268.00,131.00 L286.00,131.00 L286.00,5.00 L268.00,5.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
-<path d="M169.40,203.22 L169.40,185.22 L58.00,185.22 L58.00,203.22 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
-<path d="M283.80,203.22 L283.80,185.22 L172.40,185.22 L172.40,203.22 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M117.00,79.00 L255.00,79.00 L255.00,5.00 L117.00,5.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M146.00,70.00 L226.00,70.00 L226.00,14.00 L146.00,14.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M197.00,138.00 L197.00,82.00 L117.00,82.00 L117.00,138.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M200.00,124.00 L200.00,82.00 L260.00,82.00 L260.00,124.00 L240.00,124.00 L240.00,116.00 L220.00,116.00 L220.00,124.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M5.00,177.22 L137.00,177.22 L137.00,141.00 L5.00,141.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M140.00,177.22 L272.00,177.22 L272.00,141.00 L140.00,141.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M275.00,37.00 L269.00,53.00 L275.00,69.00 L278.00,69.00 L272.00,53.00 L278.00,37.00 Z" fill="#000000" fill-rule="evenodd" stroke="none"/>
+<path d="M263.00,101.00 L291.00,101.00 L291.00,5.00 L263.00,5.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M279.00,71.00 L285.00,71.00 L285.00,35.00 L279.00,35.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M131.00,198.22 L131.00,180.22 L5.00,180.22 L5.00,198.22 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M260.00,198.22 L260.00,180.22 L134.00,180.22 L134.00,198.22 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M275.00,215.40 L293.00,215.40 L293.00,104.00 L275.00,104.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M116.40,219.22 L116.40,201.22 L5.00,201.22 L5.00,219.22 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M242.40,211.22 L242.40,201.22 L119.40,201.22 L119.40,211.22 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+<path d="M110.40,124.00 L110.40,114.00 L5.00,114.00 L5.00,124.00 Z" fill="none" stroke="#FF0000" stroke-width="0.1"/>
 </svg>

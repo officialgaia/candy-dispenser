@@ -9,7 +9,7 @@ for name,o,h,e,q,note in ms.PARTS:
     if name in BIG: continue
     for i in range(q): items.append((f"{name}#{i}",o,h,e,note))
 def path(poly): return ms.path(poly)
-packer=rectpack.newPacker(rotation=True,pack_algo=rectpack.MaxRectsBlsf,sort_algo=rectpack.SORT_SSIDE)
+packer=rectpack.newPacker(rotation=True,pack_algo=rectpack.MaxRectsBl,sort_algo=rectpack.SORT_SSIDE)
 for idx,(n,o,h,e,note) in enumerate(items):
     x0,y0,x1,y1=o.bounds; packer.add_rect(x1-x0+GAP,y1-y0+GAP,rid=idx)
 for _ in range(10): packer.add_bin(SHEET[0]-2*5+GAP,SHEET[1]-2*5+GAP)
