@@ -64,7 +64,9 @@ void help() {
 
 void setup() {
   Serial.begin(115200);
-  delay(1500);
+  unsigned long t0 = millis();
+  while (!Serial && millis() - t0 < 8000) delay(10);   // シリアルモニタがつながるまで最大8秒待つ
+  delay(300);
   Serial.println("\n===== お菓子ディスペンサー 動作確認 =====");
 
   for (int k = 0; k < 4; k++) { pinMode(STEPPER_PIN[k], OUTPUT); digitalWrite(STEPPER_PIN[k], LOW); }
