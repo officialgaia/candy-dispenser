@@ -8,6 +8,7 @@
 | フォルダ | 中身 |
 | --- | --- |
 | `candy_test/` | 動作確認用のプログラム（部品を1つずつ確かめる） |
+| `motor_test/` | モーターだけを動かすテスト（1/4回転ずつくり返す） |
 | `candy_dispenser/` | ESP32-C3用のコード（Arduino IDEでこのフォルダを開く） |
 | `3Dプリント/` | disc.stl（円盤）、base.stl（底板）、adapter.stl（変換口）、sensor_tube.stl（センサー用の筒） |
 | `レーザー加工_MDF3mm/` | MDF 3mmのSVG（300×225 mmの板4枚分） |
